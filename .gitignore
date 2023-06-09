@@ -1,0 +1,6 @@
+# Depedencies
+venv
+__pycache__/
+
+# Environments
+.env
