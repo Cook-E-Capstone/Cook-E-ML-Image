@@ -1,7 +1,6 @@
-from fastapi import FastAPI
 from app.ml.image import predict
 from app.ml.receipt import recommend, stopword_cleaner, case_folding
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, HTTPException
 from PIL import Image
 import os
 from dotenv import load_dotenv
