@@ -31,7 +31,9 @@ def case_folding(data):
     data = data.translate(str.maketrans("","",string.punctuation))
     data = re.sub(r"\n","",data)
     data = re.sub(r"\t","",data)
-    return data
+    keyword_list = [keyword.strip() for keyword in data.split()]
+    return keyword_list
+
 
 def stopword_cleaner(data):
     sw_indonesia = stopwords.words("indonesian")
@@ -42,25 +44,42 @@ def stopword_cleaner(data):
 
 # Function to process user input and get the result
 def recommend(keywords, limit):
-    # Search the input that quite similar to dataset 
-    similarity_scores = [difflib.SequenceMatcher(None, keywords, tags).ratio() for tags in df_cleaned['bahan'].tolist()]
-    closest_match_index = similarity_scores.index(max(similarity_scores))
-    similarity_score = sorted(list(enumerate(similarity[closest_match_index])), key=lambda x:x[1], reverse=True)
 
-    # Create an empty list to store the dictionaries
-    result_list = []
+    # Initialize an empty dictionary to store the combined similarity scores for each recipe index
+    combined_scores = {}
     
-    # Append each row of df_result as a dictionary to the list
-    i = 1
-    for item in similarity_score:
-        index = item[0]
-        val = item[1]
-        if i <= limit:
-            temp_data = (df_resep.loc[index].to_dict()).copy()
-            temp_data["bahan"] = ast.literal_eval(temp_data["bahan"])
-            temp_data["langkah"] = ast.literal_eval(temp_data["langkah"])
-            result_list.append(temp_data)
-            i += 1
+    # Search each keyword separately and calculate combined similarity scores
+    for keyword in keywords:
+        # Search the keyword in df_cleaned["menu"]
+        menu_similarity_scores = [difflib.SequenceMatcher(None, keyword, menu).ratio() for menu in df_cleaned['menu'].tolist()]
+        menu_closest_match_index = menu_similarity_scores.index(max(menu_similarity_scores))
+        
+        # Keyword matching for "bahan"
+        keyword_matched_indices = [idx for idx, bahan in enumerate(df_cleaned['bahan']) if keyword in bahan]
+        
+        # Calculate similarity scores for "bahan" using TfidfVectorizer
+        bahan_vectors = vectorizer.transform([keyword] + df_cleaned['bahan'].tolist())
+        bahan_similarity_scores = cosine_similarity(bahan_vectors)[0, 1:]  # Similarity scores excluding the input keyword
+        
+        # Combine keyword matching and cosine similarity scores
+        for idx in keyword_matched_indices:
+            combined_score = 0.7 * menu_similarity_scores[idx] + 0.3 * bahan_similarity_scores[idx]
+            if idx in combined_scores:
+                combined_scores[idx] += combined_score
+            else:
+                combined_scores[idx] = combined_score
+    
+    # Sort the combined similarity scores in descending order
+    sorted_scores = sorted(combined_scores.items(), key=lambda x: x[1], reverse=True)
+    
+    # Get the recommended recipes based on the combined scores
+    result_list = []
+
+    for idx, score in sorted_scores[:limit]:
+        temp_data = df_resep.loc[idx].copy().to_dict()
+        temp_data["bahan"] = ast.literal_eval(temp_data["bahan"])
+        temp_data["langkah"] = ast.literal_eval(temp_data["langkah"])
+        result_list.append(temp_data)
     
     return result_list
 
