@@ -54,9 +54,9 @@ async def recognize_image(image: UploadFile, api_key: str):
     }
 
 @app.post('/recommendation')
-async def recomendation_(query: str, limit: Union[None, int] = None, api_key: str):
+async def recomendation_(query: str, api_key: str, limit: Union[None, int] = None):
     """ Recognize the uploaded image """
-    if not query or not api_key or:
+    if not query or not api_key:
         raise HTTPException(status_code=400, detail="Please provide an an API key and keyword to recommend")
     if api_key != key:
         raise HTTPException(status_code=401, detail="Invalid API key")
